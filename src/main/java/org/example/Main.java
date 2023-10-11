@@ -23,17 +23,30 @@ public class Main {
     private static final String PASSWORD = "admin";
 
     public static void main(String[] args) throws Exception {
+        BrokerService broker = getEmbeddedBroker();
+        broker.start();
+        System.out.println("Broker started");
+        getBrokerConnectionsCount(broker);
+
         autoAckProvider();
-        autoAckCustomer();
+        autoAckCustomer(); //stops here
+        getBrokerConnectionsCount(broker);
 
         clientAckProvider();
         clientAckCustomer();
+        getBrokerConnectionsCount(broker);
 
         dupsOkAckProvider();
         dupsOkAckCustomer();
+        getBrokerConnectionsCount(broker);
 
         sessionTransactedAckProvider();
         sessionTransactedAckCustomer();
+        getBrokerConnectionsCount(broker);
+
+        //interruption may cause HOST port locked to keep in use until JVM kill
+        broker.stop();
+        System.out.println("Broker stopped");
     }
 
     public static Connection getConnection() throws JMSException {
@@ -44,14 +57,18 @@ public class Main {
     }
 
     //Need to rewrite to work properly
-    public static void startEmbeddedBroker() throws Exception {
+    public static BrokerService getEmbeddedBroker() throws Exception {
         BrokerService broker = new BrokerService();
         KahaDBPersistenceAdapter adaptor = new KahaDBPersistenceAdapter();
         adaptor.setDirectory(new File("activemq"));
         broker.setPersistenceAdapter(adaptor);
         broker.setUseJmx(true);
-        broker.addConnector("tcp://localhost:61616");
-        broker.start();
+        broker.addConnector(HOST);
+        return broker;
+    }
+
+    public static void getBrokerConnectionsCount(BrokerService broker) {
+        System.out.printf("Количество подключений: %d ", broker.getCurrentConnections());
     }
 
     //providers, maybe need to move to separate package
@@ -61,7 +78,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.AUTO_ACKNOWLEDGE);
-            Destination destination = session.createQueue("auto ack queue");
+            Destination destination = session.createQueue("auto");
             MessageProducer producer = session.createProducer(destination);
             TextMessage message = session.createTextMessage();
             message.setText("This is auto ack message");
@@ -80,7 +97,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
-            Destination destination = session.createQueue("client ack queue");
+            Destination destination = session.createQueue("client");
             MessageProducer producer = session.createProducer(destination);
             TextMessage message = session.createTextMessage();
             message.setText("This is client ack message");
@@ -98,7 +115,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.DUPS_OK_ACKNOWLEDGE);
-            Destination destination = session.createQueue("dups ok ack queue");
+            Destination destination = session.createQueue("dups");
             MessageProducer producer = session.createProducer(destination);
             TextMessage message = session.createTextMessage();
             message.setText("This is dups ok message");
@@ -116,7 +133,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
-            Destination destination = session.createQueue("session transacted ack queue");
+            Destination destination = session.createQueue("session");
             MessageProducer producer = session.createProducer(destination);
             TextMessage message = session.createTextMessage();
             message.setText("This is session transacted message");
@@ -136,7 +153,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.AUTO_ACKNOWLEDGE);
-            Destination destination = session.createQueue("auto ack queue");
+            Destination destination = session.createQueue("auto");
             MessageConsumer consumer = session.createConsumer(destination);
             TextMessage message = (TextMessage) consumer.receive();
             System.out.println(message.getText());
@@ -153,7 +170,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
-            Destination destination = session.createQueue("client ack queue");
+            Destination destination = session.createQueue("client");
             MessageConsumer consumer = session.createConsumer(destination);
             TextMessage message = (TextMessage) consumer.receive();
             System.out.println(message.getText());
@@ -170,7 +187,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.DUPS_OK_ACKNOWLEDGE);
-            Destination destination = session.createQueue("dups ok ack queue");
+            Destination destination = session.createQueue("dups");
             MessageConsumer consumer = session.createConsumer(destination);
             TextMessage message = (TextMessage) consumer.receive();
             System.out.println(message.getText());
@@ -187,7 +204,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
-            Destination destination = session.createQueue("session transacted ack queue");
+            Destination destination = session.createQueue("session");
             MessageConsumer consumer = session.createConsumer(destination);
             TextMessage message = (TextMessage) consumer.receive();
             System.out.println(message.getText());
