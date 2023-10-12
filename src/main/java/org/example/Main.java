@@ -1,6 +1,7 @@
 package org.example;
 
 import java.io.File;
+import java.util.HashMap;
 
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
@@ -13,7 +14,9 @@ import javax.jms.Session;
 import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.broker.BrokerPlugin;
 import org.apache.activemq.broker.BrokerService;
+import org.apache.activemq.security.SimpleAuthenticationPlugin;
 import org.apache.activemq.store.kahadb.KahaDBPersistenceAdapter;
 
 
@@ -26,9 +29,10 @@ public class Main {
         BrokerService broker = getEmbeddedBroker();
         broker.start();
         System.out.println("Broker started");
-        getBrokerConnectionsCount(broker);
 
         autoAckProvider();
+        getBrokerConnectionsCount(broker);
+
         autoAckCustomer(); //stops here
         getBrokerConnectionsCount(broker);
 
@@ -62,6 +66,13 @@ public class Main {
         KahaDBPersistenceAdapter adaptor = new KahaDBPersistenceAdapter();
         adaptor.setDirectory(new File("activemq"));
         broker.setPersistenceAdapter(adaptor);
+
+        HashMap<String, String> userPasswords = new HashMap<>();
+        userPasswords.put(USER, PASSWORD);
+        SimpleAuthenticationPlugin simpleAuthenticationPlugin = new SimpleAuthenticationPlugin();
+        simpleAuthenticationPlugin.setUserPasswords(userPasswords);
+        broker.setPlugins(new BrokerPlugin[]{simpleAuthenticationPlugin});
+
         broker.setUseJmx(true);
         broker.addConnector(HOST);
         return broker;
@@ -153,7 +164,7 @@ public class Main {
         try {
             connection = getConnection();
             Session session = connection.createSession(true, Session.AUTO_ACKNOWLEDGE);
-            Destination destination = session.createQueue("auto");
+            Destination destination = session.createQueue("auto"); //error here
             MessageConsumer consumer = session.createConsumer(destination);
             TextMessage message = (TextMessage) consumer.receive();
             System.out.println(message.getText());
